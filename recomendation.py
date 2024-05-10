@@ -1,5 +1,7 @@
 from openai import OpenAI
 
+from dotenv import load_dotenv
+
 import os
 import time
 import re
@@ -10,16 +12,15 @@ import spotipy
 import webbrowser
 import pyautogui
 
-client_id = "21a86f17a0304be2ab1ddd07c22639a9"
-client_secret = "33b9c06cf9d74f1ca40bcc0510a9f458"
-
+# Cargar variables de entorno desde el archivo .env
+load_dotenv()
 
 def main(text: str):
 
     systemRole = "Eres un sistema recomendador de música de acuerdo al estado de ánimo. Recomiendas 5 canciones. En caso de tener un ánimo Tristeza, Enojo, Nuetral, recomiendas música que levante el ánimo de la persona para sentirse mejor. En caso de tener un ánimo de Alegría, Asombro, Sorprendido, recomiendas música que mantenga ese estado de ánimo. Solo dame la lista de canciones que se dividan por , cada sugerencia y que se separe el autor de la cancion con un - ."
 
     client = OpenAI(
-        api_key=os.getenv("OPENAI_TOKEN"),
+        api_key=os.getenv("OPEN_AI_TOKEN"),
     )
 
     completion = client.chat.completions.create(
@@ -38,7 +39,7 @@ def main(text: str):
 
     lista_canciones = []
 
-    caracteres_eliminar = ['.', '"']
+    caracteres_eliminar = ['.', '"', "\n"]
 
     for s in songs:
         query = "".join(caracter for caracter in s if caracter not in caracteres_eliminar)
@@ -54,7 +55,12 @@ def play_music(songs: list):
 
     time_to_wait = 0
 
+    playing = False
+
     for song in songs:
+
+        if song == "" or song == " ":
+            continue
 
         # Reiniciar el tiempo
         time_to_wait = 0
@@ -62,16 +68,22 @@ def play_music(songs: list):
         # Cancion - Artista
         info_song = song.split("-")
 
+        if len(info_song) == 1:
+            continue
+
         # Eliminar el ultimo espacio de la cancion
         if info_song[0][len(info_song[0]) - 1] == " ":
-            song = ""
-            for i in range(len(info_song[0])-1):
-                song += info_song[0][i]
-            info_song[0] = song
+            info_song[0] = info_song[0][:-1]
+        # Eliminar el primer espacio vacio de la cancion
+        if info_song[0][0] == " ":
+            info_song[0] = info_song[0][1:]
+        # Eliminar el primer espacio vacio del artista
+        if info_song[1][0] == " ":
+            info_song[1] = info_song[1][1:]
 
         # Conectarse a la API de spotipy con las credenciales de desarrollador
         sp = spotipy.Spotify(
-            client_credentials_manager=SpotifyClientCredentials(client_id, client_secret)
+            client_credentials_manager=SpotifyClientCredentials(os.getenv('SPOTIFY_CLIENT_ID'), os.getenv('SPOTIFY_CLIENT_SECRET'))
         )
 
         # Buscar al autor
@@ -82,7 +94,7 @@ def play_music(songs: list):
             
             name_song = result["tracks"]["items"][i]["name"]
 
-            if name_song == info_song[0]:
+            if info_song[0].lower() in name_song.lower():
 
                 # Actualizar el tiempo de espera de acuerdo a la canción actual
                 time_to_wait = result["tracks"]["items"][i]["duration_ms"] / 1000
@@ -91,6 +103,8 @@ def play_music(songs: list):
                 # Abrrir la aplicación de spotify con la canción especificada
                 webbrowser.open(result['tracks']['items'][i]['uri'])
                 
+                playing = True
+
                 break
 
         print("Reproduciendo cancion: " + info_song[0] + " - " + info_song[1])
@@ -98,9 +112,13 @@ def play_music(songs: list):
         # Esperar a que la última cancion se termine
         time.sleep(time_to_wait)
 
-        pyautogui.press("enter")
+        if playing:
+            pyautogui.press("space")
+
+            playing = False
 
 
 if __name__ == "__main__":
-    main("estado de ánimo: Triste")
+    # main("estado de ánimo: Triste")
     # play_music(["Beat It - Michael Jackson", "Locked out of Heaven - Bruno Mars"])
+    pass
