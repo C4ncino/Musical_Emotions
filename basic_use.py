@@ -6,13 +6,14 @@ import numpy as np
 def mostrar_video():
     cap = cv2.VideoCapture(0)
 
-    model = tf.keras.models.load_model('./models/v1.h5')
+    model = tf.keras.models.load_model('./models/v4.h5')
 
     class_names = [
         'Happy',
         'Sad',
         'Neutral',
-        'Angry'
+        'Angry',
+        'Surprised'	
     ]
 
     if not cap.isOpened():
@@ -21,6 +22,8 @@ def mostrar_video():
     
     # Se utiliza el clasificador de rostros haarcascade_frontalface_default
     faceClassif = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+    emotion = "Neutral"
 
     while True:
         ret, frame = cap.read()
@@ -45,14 +48,14 @@ def mostrar_video():
             rostro = frame[y:y + h, x:x + w]
 
 
-        mini_frame = cv2.resize(rostro, (224, 224))
-        preprocessed_frame = np.expand_dims(mini_frame, axis=0)
+            mini_frame = cv2.resize(rostro, (64, 64))
+            preprocessed_frame = np.expand_dims(mini_frame, axis=0)
 
-        pred = model.predict(preprocessed_frame)
+            pred = model.predict(preprocessed_frame)
 
-        emotion = class_names[np.argmax(pred)]
+            emotion = class_names[np.argmax(pred)]
 
-        print(f"Yo digo que es: {emotion}")
+            print(f"Yo digo que es: {emotion}")
 
         cv2.imshow('live', frame)
 
